@@ -3,22 +3,25 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+
+interface NavItem {
+  href?: string
+  label: string
+  items?: { href: string; label: string }[]
+}
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const navDropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
 
-  const navLinks = [
+  const navLinks: NavItem[] = [
     { href: '/', label: 'Home' },
     { href: '/lawyers', label: 'Find Lawyers' },
     {
@@ -51,7 +54,7 @@ export default function Navigation() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         setUser(user)
-      } catch (error) {
+      } catch {
         setUser(null)
       } finally {
         setLoading(false)
@@ -59,14 +62,12 @@ export default function Navigation() {
     }
 
     getUser()
+  }, [])
 
-    // Close dropdowns when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false)
-      }
-      if (navDropdownRef.current && !navDropdownRef.current.contains(event.target as Node)) {
-        setActiveDropdown(null)
+        setOpenDropdown(null)
       }
     }
 
@@ -78,15 +79,13 @@ export default function Navigation() {
     const supabase = createClient()
     await supabase.auth.signOut()
     setUser(null)
-    setShowDropdown(false)
+    setOpenDropdown(null)
     router.push('/')
     router.refresh()
   }
 
   const isActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/'
-    }
+    if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
 
@@ -94,10 +93,22 @@ export default function Navigation() {
     return items.some(item => pathname.startsWith(item.href))
   }
 
+  const getUserInitials = () => {
+    const fullName = user?.user_metadata?.full_name || ''
+    if (fullName) {
+      return fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    }
+    return user?.email?.charAt(0).toUpperCase() || 'U'
+  }
+
+  const toggleDropdown = (name: string) => {
+    setOpenDropdown(openDropdown === name ? null : name)
+  }
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/50">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-20" ref={dropdownRef}>
           {/* Logo */}
           <Link href="/" className="shrink-0">
             <Image 
@@ -111,17 +122,21 @@ export default function Navigation() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-6" ref={navDropdownRef}>
+          <div 
+            className="hidden lg:flex items-center space-x-6"
+            onMouseLeave={() => setOpenDropdown(null)}
+          >
             {navLinks.map((link, index) => {
               if (link.items) {
                 return (
                   <div 
                     key={index} 
                     className="relative"
-                    onMouseEnter={() => setActiveDropdown(link.label)}
-                    onMouseLeave={() => setActiveDropdown(null)}
+                    onMouseEnter={() => setOpenDropdown(link.label)}
                   >
                     <button
+                      type="button"
+                      onClick={() => toggleDropdown(link.label)}
                       className={`flex items-center gap-1 transition-colors text-sm py-2 ${
                         isDropdownActive(link.items)
                           ? 'text-blue-600 font-semibold'
@@ -129,35 +144,30 @@ export default function Navigation() {
                       }`}
                     >
                       {link.label}
-                      <svg className={`w-3 h-3 transition-transform ${activeDropdown === link.label ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-3 h-3 transition-transform ${openDropdown === link.label ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 15.0006L7.75732 10.758L9.17154 9.34375L12 12.1722L14.8284 9.34375L16.2426 10.758L12 15.0006Z" />
                       </svg>
                     </button>
 
-                    <div 
-                      className={`absolute left-0 top-full pt-2 transition-all duration-200 ${
-                        activeDropdown === link.label 
-                          ? 'opacity-100 visible translate-y-0' 
-                          : 'opacity-0 invisible -translate-y-1'
-                      }`}
-                    >
-                      <div className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl py-2">
-                        {link.items.map((item, itemIndex) => (
-                          <Link
-                            key={itemIndex}
-                            href={item.href}
-                            onClick={() => setActiveDropdown(null)}
-                            className={`block px-4 py-2.5 text-sm transition-colors ${
-                              isActive(item.href)
-                                ? 'bg-blue-50 text-blue-600 font-semibold'
-                                : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                            }`}
-                          >
-                            {item.label}
-                          </Link>
-                        ))}
+                    {openDropdown === link.label && (
+                      <div className="absolute left-0 top-full z-[9999]">
+                        <div className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl py-2 mt-1">
+                          {link.items.map((item, itemIndex) => (
+                            <a
+                              key={itemIndex}
+                              href={item.href}
+                              className={`block px-4 py-2.5 text-sm transition-colors ${
+                                isActive(item.href)
+                                  ? 'bg-blue-50 text-blue-600 font-semibold'
+                                  : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                              }`}
+                            >
+                              {item.label}
+                            </a>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )
               }
@@ -165,9 +175,10 @@ export default function Navigation() {
               return (
                 <Link 
                   key={index}
-                  href={link.href} 
+                  href={link.href!}
+                  onClick={() => setOpenDropdown(null)}
                   className={`transition-colors text-sm py-2 ${
-                    isActive(link.href)
+                    isActive(link.href!)
                       ? 'text-blue-600 font-semibold border-b-2 border-blue-600'
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
@@ -177,72 +188,48 @@ export default function Navigation() {
               )
             })}
 
-            {/* Auth Area - Shows nothing while loading */}
+            {/* Auth Area - Desktop */}
             {!loading && (
               user ? (
-                /* User is logged in - Show avatar */
-                <div className="relative" ref={dropdownRef}>
+                <div className="relative">
                   <button 
-                    onClick={() => setShowDropdown(!showDropdown)}
+                    type="button"
+                    onClick={() => toggleDropdown('user')}
                     className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-sm font-semibold text-white hover:bg-blue-700 transition-all border-2 border-blue-600"
                   >
-                    {user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                    {getUserInitials()}
                   </button>
 
-                  {showDropdown && (
-                    <div className="absolute right-0 top-12 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-50">
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
-                          {user?.user_metadata?.full_name || 'User'}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                      </div>
-                      <div className="py-1">
-                        <Link 
-                          href="/dashboard" 
-                          onClick={() => setShowDropdown(false)}
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          🏠 Dashboard
-                        </Link>
-                        <Link 
-                          href="/ai" 
-                          onClick={() => setShowDropdown(false)}
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          ⚖️ AI Assistant
-                        </Link>
-                        <button 
-                          onClick={handleLogout}
-                          className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          🚪 Log Out
-                        </button>
+                  {openDropdown === 'user' && (
+                    <div className="absolute right-0 top-full z-[9999]">
+                      <div className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl mt-1">
+                        <div className="px-4 py-3 border-b border-gray-100">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {user?.user_metadata?.full_name || 'User'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                        </div>
+                        <div className="py-1">
+                          <a href="/dashboard" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                            🏠 Dashboard
+                          </a>
+                          <a href="/ai" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                            ⚖️ AI Assistant
+                          </a>
+                          <button type="button" onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                            🚪 Log Out
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                /* User is NOT logged in */
                 <>
-                  <Link 
-                    href="/login" 
-                    className={`transition-colors text-sm py-2 ${
-                      pathname === '/login'
-                        ? 'text-blue-600 font-semibold'
-                        : 'text-gray-700 hover:text-blue-600'
-                    }`}
-                  >
+                  <Link href="/login" className="text-gray-700 hover:text-blue-600 transition-colors text-sm py-2">
                     Login
                   </Link>
-                  <Link 
-                    href="/signup" 
-                    className={`px-5 py-2.5 rounded-lg transition-all text-sm ${
-                      pathname === '/signup'
-                        ? 'bg-blue-700 text-white shadow-lg shadow-blue-200'
-                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200'
-                    }`}
-                  >
+                  <Link href="/signup" className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-all text-sm">
                     Get Started
                   </Link>
                 </>
@@ -250,49 +237,50 @@ export default function Navigation() {
             )}
           </div>
 
-          {/* Mobile: Auth area + Hamburger */}
+          {/* Mobile: User + Hamburger */}
           <div className="lg:hidden flex items-center gap-3">
             {!loading && (
               user ? (
-                <div className="relative" ref={dropdownRef}>
+                <div className="relative">
                   <button 
-                    onClick={() => setShowDropdown(!showDropdown)}
+                    type="button"
+                    onClick={() => toggleDropdown('user')}
                     className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-sm font-semibold text-white"
                   >
-                    {user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'U'}
+                    {getUserInitials()}
                   </button>
-                  {showDropdown && (
-                    <div className="absolute right-0 top-12 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-50">
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{user?.user_metadata?.full_name || 'User'}</p>
-                        <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                      </div>
-                      <div className="py-1">
-                        <Link href="/dashboard" onClick={() => setShowDropdown(false)} className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                          🏠 Dashboard
-                        </Link>
-                        <Link href="/ai" onClick={() => setShowDropdown(false)} className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                          ⚖️ AI Assistant
-                        </Link>
-                        <button onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                          🚪 Log Out
-                        </button>
+                  {openDropdown === 'user' && (
+                    <div className="absolute right-0 top-full z-[9999]">
+                      <div className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl mt-1">
+                        <div className="px-4 py-3 border-b border-gray-100">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{user?.user_metadata?.full_name || 'User'}</p>
+                          <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                        </div>
+                        <div className="py-1">
+                          <a href="/dashboard" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                            🏠 Dashboard
+                          </a>
+                          <a href="/ai" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                            ⚖️ AI Assistant
+                          </a>
+                          <button type="button" onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                            🚪 Log Out
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <Link 
-                  href="/signup" 
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all"
-                >
+                <Link href="/signup" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
                   Get Started
                 </Link>
               )
             )}
             <button 
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-700 hover:text-blue-600 transition-colors"
+              className="text-gray-700"
             >
               {mobileMenuOpen ? (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,7 +295,7 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden pb-4 border-t border-gray-100 pt-4">
             <div className="space-y-1">
@@ -317,49 +305,23 @@ export default function Navigation() {
                     <div key={index}>
                       <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">{link.label}</p>
                       {link.items.map((item, itemIndex) => (
-                        <Link 
-                          key={itemIndex}
-                          href={item.href} 
-                          onClick={() => setMobileMenuOpen(false)}
-                          className={`block px-4 py-3 rounded-lg transition-colors ${
-                            isActive(item.href)
-                              ? 'bg-blue-50 text-blue-600 font-semibold'
-                              : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                          }`}
-                        >
+                        <a key={itemIndex} href={item.href} className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50">
                           {item.label}
-                        </Link>
+                        </a>
                       ))}
                     </div>
                   )
                 }
                 return (
-                  <Link 
-                    key={index}
-                    href={link.href} 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`block px-4 py-3 rounded-lg transition-colors ${
-                      isActive(link.href)
-                        ? 'bg-blue-50 text-blue-600 font-semibold'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                    }`}
-                  >
+                  <a key={index} href={link.href} className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50">
                     {link.label}
-                  </Link>
+                  </a>
                 )
               })}
               {!loading && !user && (
-                <Link 
-                  href="/login" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-4 py-3 rounded-lg transition-colors ${
-                    pathname === '/login'
-                      ? 'bg-blue-50 text-blue-600 font-semibold'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                  }`}
-                >
+                <a href="/login" className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50">
                   Login
-                </Link>
+                </a>
               )}
             </div>
           </div>

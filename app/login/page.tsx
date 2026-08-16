@@ -12,15 +12,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [showModal, setShowModal] = useState(false)
+  const [modalType, setModalType] = useState<'success' | 'error'>('success')
+  const [modalMessage, setModalMessage] = useState('')
+  const [redirecting, setRedirecting] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
-    setSuccess('')
 
     const supabase = createClient()
 
@@ -30,17 +30,38 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError(error.message)
       setLoading(false)
+      setModalType('error')
+      setModalMessage(error.message)
+      setShowModal(true)
       return
     }
 
     if (data.user) {
-      setSuccess('Login successful! Redirecting...')
+      setLoading(false)
+      setModalType('success')
+      setModalMessage('Login successful! Redirecting to your dashboard...')
+      setShowModal(true)
+
+      // Start redirect after modal shows
+      setTimeout(() => {
+        setRedirecting(true)
+        setTimeout(() => {
+          router.push('/dashboard')
+          router.refresh()
+        }, 2000)
+      }, 1500)
+    }
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    if (modalType === 'success' && !redirecting) {
+      setRedirecting(true)
       setTimeout(() => {
         router.push('/dashboard')
         router.refresh()
-      }, 1000)
+      }, 2000)
     }
   }
 
@@ -51,25 +72,16 @@ export default function LoginPage() {
 
       {/* Login Form */}
       <div className="flex-1 flex items-center justify-center px-4 py-12 pt-32 md:pt-36">
-        <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10 w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10 w-full max-w-md relative z-10">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-gray-600">Log in to your LegallySwift account</p>
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+              </svg>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+            <p className="text-gray-600 text-sm">Log in to your LegallySwift account</p>
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Success Message */}
-          {success && (
-            <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-              {success}
-            </div>
-          )}
 
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email */}
@@ -131,9 +143,17 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all hover:shadow-lg hover:shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all hover:shadow-lg hover:shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? 'Logging in...' : 'Log In'}
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Logging in...
+                </>
+              ) : 'Log In'}
             </button>
           </form>
 
@@ -156,6 +176,94 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      {/* Success/Error Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closeModal}
+          ></div>
+
+          {/* Modal Content */}
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 p-8 text-center">
+            {modalType === 'success' ? (
+              <>
+                {/* Success Icon */}
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Success!</h2>
+                <p className="text-gray-600 text-sm mb-6">{modalMessage}</p>
+                
+                {/* Loading Bar */}
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                  <div className="bg-green-500 h-full rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                </div>
+                
+                <button
+                  onClick={closeModal}
+                  className="w-full bg-green-600 text-white py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-all"
+                >
+                  Continue
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Error Icon */}
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Login Failed</h2>
+                <p className="text-gray-600 text-sm mb-6">{modalMessage}</p>
+                
+                <button
+                  onClick={closeModal}
+                  className="w-full bg-red-600 text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 transition-all"
+                >
+                  Try Again
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Loading Overlay */}
+      {redirecting && (
+        <div className="fixed inset-0 z-[10000] bg-white flex items-center justify-center">
+          <div className="text-center">
+            {/* Animated Logo */}
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="absolute inset-3 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                LS
+              </div>
+            </div>
+            
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Welcome to LegallySwift</h2>
+            <p className="text-gray-600 text-sm mb-6">Preparing your dashboard...</p>
+            
+            {/* Loading Dots */}
+            <div className="flex justify-center gap-1 mb-6">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-64 bg-gray-200 rounded-full h-1.5 overflow-hidden mx-auto">
+              <div className="bg-blue-600 h-full rounded-full animate-pulse" style={{ width: '100%' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
