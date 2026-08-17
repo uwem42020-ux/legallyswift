@@ -106,8 +106,8 @@ export default function Navigation() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <nav className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-gray-200/50 pointer-events-auto">
+      <nav className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pointer-events-auto">
         <div className="flex justify-between items-center h-16 md:h-20" ref={dropdownRef}>
           {/* Logo */}
           <Link href="/" className="shrink-0">
@@ -151,15 +151,15 @@ export default function Navigation() {
 
                     {openDropdown === link.label && (
                       <div className="absolute left-0 top-full z-[9999]">
-                        <div className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl py-2 mt-1">
+                        <div className="w-56 bg-white/70 backdrop-blur-xl border border-gray-200/50 rounded-xl shadow-xl py-2 mt-1">
                           {link.items.map((item, itemIndex) => (
                             <a
                               key={itemIndex}
                               href={item.href}
                               className={`block px-4 py-2.5 text-sm transition-colors ${
                                 isActive(item.href)
-                                  ? 'bg-blue-50 text-blue-600 font-semibold'
-                                  : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                                  ? 'bg-blue-50/80 text-blue-600 font-semibold'
+                                  : 'text-gray-700 hover:bg-white/50 hover:text-blue-600'
                               }`}
                             >
                               {item.label}
@@ -202,21 +202,21 @@ export default function Navigation() {
 
                   {openDropdown === 'user' && (
                     <div className="absolute right-0 top-full z-[9999]">
-                      <div className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl mt-1">
-                        <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="w-56 bg-white/70 backdrop-blur-xl border border-gray-200/50 rounded-xl shadow-xl mt-1">
+                        <div className="px-4 py-3 border-b border-gray-200/50">
                           <p className="text-sm font-semibold text-gray-900 truncate">
                             {user?.user_metadata?.full_name || 'User'}
                           </p>
                           <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
                         <div className="py-1">
-                          <a href="/dashboard" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <a href="/dashboard" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-white/50 hover:text-blue-600 transition-colors">
                             🏠 Dashboard
                           </a>
-                          <a href="/ai" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <a href="/ai" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-white/50 hover:text-blue-600 transition-colors">
                             ⚖️ AI Assistant
                           </a>
-                          <button type="button" onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                          <button type="button" onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50/50 transition-colors">
                             🚪 Log Out
                           </button>
                         </div>
@@ -251,19 +251,19 @@ export default function Navigation() {
                   </button>
                   {openDropdown === 'user' && (
                     <div className="absolute right-0 top-full z-[9999]">
-                      <div className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl mt-1">
-                        <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="w-56 bg-white/70 backdrop-blur-xl border border-gray-200/50 rounded-xl shadow-xl mt-1">
+                        <div className="px-4 py-3 border-b border-gray-200/50">
                           <p className="text-sm font-semibold text-gray-900 truncate">{user?.user_metadata?.full_name || 'User'}</p>
                           <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
                         <div className="py-1">
-                          <a href="/dashboard" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <a href="/dashboard" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-white/50 hover:text-blue-600 transition-colors">
                             🏠 Dashboard
                           </a>
-                          <a href="/ai" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <a href="/ai" className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-white/50 hover:text-blue-600 transition-colors">
                             ⚖️ AI Assistant
                           </a>
-                          <button type="button" onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                          <button type="button" onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50/50 transition-colors">
                             🚪 Log Out
                           </button>
                         </div>
@@ -272,12 +272,21 @@ export default function Navigation() {
                   )}
                 </div>
               ) : (
-                <Link 
-                  href="/signup" 
-                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0"
-                >
-                  Get Started
-                </Link>
+                <>
+                  {/* Mobile Login - Border only */}
+                  <Link 
+                    href="/login" 
+                    className="text-blue-600 border-2 border-blue-600 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 hover:bg-blue-50 transition-all"
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    href="/signup" 
+                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0"
+                  >
+                    Get Started
+                  </Link>
+                </>
               )
             )}
             <button 
@@ -298,9 +307,9 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden pb-4 border-t border-gray-100 pt-4">
+          <div className="lg:hidden pb-4 border-t border-gray-200/50 pt-4 bg-white/70 backdrop-blur-xl">
             <div className="space-y-1">
               {navLinks.map((link, index) => {
                 if (link.items) {
@@ -308,7 +317,7 @@ export default function Navigation() {
                     <div key={index}>
                       <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">{link.label}</p>
                       {link.items.map((item, itemIndex) => (
-                        <a key={itemIndex} href={item.href} className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50">
+                        <a key={itemIndex} href={item.href} className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-white/50 hover:text-blue-600 transition-colors">
                           {item.label}
                         </a>
                       ))}
@@ -316,13 +325,13 @@ export default function Navigation() {
                   )
                 }
                 return (
-                  <a key={index} href={link.href} className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50">
+                  <a key={index} href={link.href} className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-white/50 hover:text-blue-600 transition-colors">
                     {link.label}
                   </a>
                 )
               })}
               {!loading && !user && (
-                <a href="/login" className="block px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50">
+                <a href="/login" className="block px-4 py-3 rounded-lg text-blue-600 font-semibold hover:bg-white/50 transition-colors">
                   Login
                 </a>
               )}
